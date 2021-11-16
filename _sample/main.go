@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,13 +9,12 @@ import (
 )
 
 func main() {
-	ctx, _ := catcher.InitCatcher()
+	ctx := context.Background()
+	go catcher.InitCatcher(ctx)
 
+	time.Sleep(1 * time.Second)
 	fmt.Println("aaa")
 
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 	fmt.Println("bbb")
-
-	time.Sleep(5000 * time.Millisecond)
-	ctx.Done()
 }
