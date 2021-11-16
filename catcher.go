@@ -8,42 +8,42 @@ import (
 	"os"
 )
 
-func InitCatcher() (context.Context, chan interface{}) {
-	ctx := context.Background()
-	ch := make(chan interface{})
+func InitCatcher(ctx context.Context) {
+	ch := make(chan string)
 
-	r, w, err := os.Pipe()
+	go func() {
+		for {
+			select {
+			case v := <-ch:
+				fmt.Println("d")
+				fmt.Println(v)
+			}
+		}
+	}()
+
+	catch(ctx, ch)
+}
+
+func catch(ctx context.Context, ch chan string) {
 	old := os.Stdout
-
+	fmt.Println("start")
+	_, cancel := context.WithCancel(ctx)
+	r, w, err := os.Pipe()
 	if err != nil {
 		panic(err)
 	}
 	os.Stdout = w
 
-	// go catch(ctx, ch)
-	go catch(ctx, r, ch)
-
-	// w.Close()
-	os.Stdout = old
-	fmt.Println("origin: ", old)
-	return ctx, ch
-}
-
-// catch cli
-// func catch(ctx context.Context, ch chan interface{}) {
-// 	for {
-// 		select {
-// 		case v := <-ch:
-// 			fmt.Println(reflect.TypeOf(v))
-// 		}
-// 	}
-// }
-
-func catch(ctx context.Context, r *os.File, ch chan interface{}) {
-	var buf bytes.Buffer
-	_, err := io.Copy(&buf, r)
-	if err != nil {
-		panic(err)
-	}
-	ch <- buf.String()
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		fmt.Println(buf.String())
+		if buf.String() != "" {
+			fmt.Println("kita")
+			ch <- buf.String()
+			w.Close()
+			os.Stdout = old
+			cancel()
+		}
+	}()
 }
