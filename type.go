@@ -18,6 +18,7 @@ const (
 
 type Catcher struct {
 	saved  *os.File
+	buf    chan string
 	writer *os.File
 	reader *os.File
 }

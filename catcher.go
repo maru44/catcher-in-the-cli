@@ -20,30 +20,73 @@ func InitCatcher(ctx context.Context) {
 			}
 		}
 	}()
-
 	catch(ctx, ch)
 }
 
 func catch(ctx context.Context, ch chan string) {
-	old := os.Stdout
+	// old := os.Stdout
 	fmt.Println("start")
-	_, cancel := context.WithCancel(ctx)
+	// _, cancel := context.WithCancel(ctx)
 	r, w, err := os.Pipe()
 	if err != nil {
 		panic(err)
 	}
 	os.Stdout = w
 
+	// go func() {
+	// 	var buf bytes.Buffer
+	// 	io.Copy(&buf, r)
+	// 	// fmt.Println(buf.String())
+	// 	// if buf.String() != "" {
+	// 	// 	fmt.Println("kita")
+	// 	// 	ch <- buf.String()
+	// 	// 	w.Close()
+	// 	// 	os.Stdout = old
+	// 	// 	cancel()
+	// 	// }
+
+	// 	// ch <- buf.String()
+
+	// 	if buf.String() != "" {
+	// 		ch <- buf.String()
+	// 	}
+	// }()
+
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		fmt.Println(buf.String())
-		if buf.String() != "" {
-			fmt.Println("kita")
-			ch <- buf.String()
-			w.Close()
-			os.Stdout = old
-			cancel()
+		for {
+			io.Copy(&buf, r)
+			if buf.String() != "" {
+				fmt.Println("kita")
+				ch <- buf.String()
+				break
+			}
 		}
 	}()
+
+	w.Close()
+	// os.Stdout = old
+}
+
+func (c *Catcher) StartCatcher() {
+	c.saved = os.Stdout
+	var err error
+	c.reader, c.writer, err = os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+
+	os.Stdout = c.writer
+	c.buf = make(chan string)
+	go func() {
+		var b bytes.Buffer
+		io.Copy(&b, c.reader)
+		c.buf <- b.String()
+	}()
+}
+
+func (c *Catcher) StopCatcher() string {
+	c.writer.Close()
+	os.Stdout = c.saved
+	return <-c.buf
 }
