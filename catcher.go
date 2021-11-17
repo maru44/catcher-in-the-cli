@@ -1,11 +1,11 @@
 package catcher
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
+	"time"
 )
 
 func InitCatcher(ctx context.Context) {
@@ -23,70 +23,43 @@ func InitCatcher(ctx context.Context) {
 	catch(ctx, ch)
 }
 
-func catch(ctx context.Context, ch chan string) {
-	// old := os.Stdout
-	fmt.Println("start")
-	// _, cancel := context.WithCancel(ctx)
-	r, w, err := os.Pipe()
-	if err != nil {
-		panic(err)
+func (c *Catcher) catch(ctx context.Context, ch chan string) {
+	localCtx, _ := context.WithCancel(ctx)
+	c.initThreadTime()
+
+	ms := []MessageWithType{}
+
+	go scan(localCtx, os.Stdin, ms)
+	go scan(localCtx, os.Stderr, ms)
+	go scan(localCtx, os.Stdout, ms)
+}
+
+//
+func scan(ctx context.Context, file *os.File, ms []MessageWithType) {
+	scanner := bufio.NewScanner(file)
+
+	var t StdType
+	switch file {
+	case os.Stdin:
+		t = StdTypeIn
+	case os.Stderr:
+		t = StdTypeError
+	default:
+		t = StdTypeOut
 	}
-	os.Stdout = w
 
-	// go func() {
-	// 	var buf bytes.Buffer
-	// 	io.Copy(&buf, r)
-	// 	// fmt.Println(buf.String())
-	// 	// if buf.String() != "" {
-	// 	// 	fmt.Println("kita")
-	// 	// 	ch <- buf.String()
-	// 	// 	w.Close()
-	// 	// 	os.Stdout = old
-	// 	// 	cancel()
-	// 	// }
-
-	// 	// ch <- buf.String()
-
-	// 	if buf.String() != "" {
-	// 		ch <- buf.String()
-	// 	}
-	// }()
-
-	go func() {
-		var buf bytes.Buffer
-		for {
-			io.Copy(&buf, r)
-			if buf.String() != "" {
-				fmt.Println("kita")
-				ch <- buf.String()
-				break
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			for scanner.Scan() {
+				ms = append(ms, MessageWithType{
+					Type:    t,
+					Message: scanner.Text(),
+					Time:    time.Now(),
+				})
 			}
 		}
-	}()
-
-	w.Close()
-	// os.Stdout = old
-}
-
-func (c *Catcher) StartCatcher() {
-	c.saved = os.Stdout
-	var err error
-	c.reader, c.writer, err = os.Pipe()
-	if err != nil {
-		panic(err)
 	}
-
-	os.Stdout = c.writer
-	c.buf = make(chan string)
-	go func() {
-		var b bytes.Buffer
-		io.Copy(&b, c.reader)
-		c.buf <- b.String()
-	}()
-}
-
-func (c *Catcher) StopCatcher() string {
-	c.writer.Close()
-	os.Stdout = c.saved
-	return <-c.buf
 }
