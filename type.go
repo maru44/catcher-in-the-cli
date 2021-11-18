@@ -1,6 +1,7 @@
 package catcher
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -26,8 +27,16 @@ type Catcher struct {
 	threadTime int
 }
 
-func (c *Catcher) initThreadTime() {
-	if c.threadTime == 0 {
-		c.threadTime = 60
+func SetupCatcher(sec ...int) *Catcher {
+	t := 60
+	if len(sec) > 0 {
+		t = sec[0]
 	}
+	return &Catcher{
+		threadTime: t,
+	}
+}
+
+func (m *MessageWithType) String() string {
+	return fmt.Sprintf("%s: %v: %s", m.Type, m.Time, m.Message)
 }

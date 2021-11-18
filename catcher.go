@@ -20,18 +20,23 @@ func InitCatcher(ctx context.Context) {
 			}
 		}
 	}()
-	catch(ctx, ch)
+	// catch(ctx, ch)
 }
 
-func (c *Catcher) catch(ctx context.Context, ch chan string) {
-	localCtx, _ := context.WithCancel(ctx)
-	c.initThreadTime()
+func (c *Catcher) Catch(ctx context.Context, ch chan string) {
+	localCtx, cancel := context.WithCancel(ctx)
 
 	ms := []MessageWithType{}
 
-	go scan(localCtx, os.Stdin, ms)
-	go scan(localCtx, os.Stderr, ms)
-	go scan(localCtx, os.Stdout, ms)
+	time.Sleep(time.Duration(c.threadTime) * time.Second)
+	scan(localCtx, os.Stdin, ms)
+	scan(localCtx, os.Stderr, ms)
+	scan(localCtx, os.Stdout, ms)
+	cancel()
+
+	for _, m := range ms {
+		fmt.Println(m.String())
+	}
 }
 
 //
