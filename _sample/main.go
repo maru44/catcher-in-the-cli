@@ -1,20 +1,33 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
-
-	"github.com/maru44/catcher-in-the-cli"
 )
 
 func main() {
-	ctx := context.Background()
-	go catcher.InitCatcher(ctx)
+	// ctx := context.Background()
+	ch := make(chan string)
+	ms := []string{}
 
-	time.Sleep(1 * time.Second)
-	fmt.Println("aaa")
+	// go catcher.Catch(ctx, ch, ms)
 
-	time.Sleep(1 * time.Second)
-	fmt.Println("bbb")
+	go func() {
+		for {
+			select {
+			case v := <-ch:
+				fmt.Println(v)
+				if v != "" {
+					ms = append(ms, v)
+				}
+			case <-time.After(3 * time.Second):
+				// cancel()
+				fmt.Println(ms)
+				break
+			}
+		}
+	}()
+
+	fmt.Println("bbbb")
+	fmt.Println("ccc")
 }

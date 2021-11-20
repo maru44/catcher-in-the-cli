@@ -23,11 +23,5 @@ const (
 )
 
 type Catcher struct {
-	threadTime int
-}
-
-func (c *Catcher) initThreadTime() {
-	if c.threadTime == 0 {
-		c.threadTime = 60
-	}
+	ThreadTime int
 }
