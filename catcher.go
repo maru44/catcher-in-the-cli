@@ -36,11 +36,48 @@ import (
 // 	os.Stdout = w
 // }
 
-// func sendReceiver(w *os.File, ch chan string) {
-// 	for {
+func sendReceiver(ctx context.Context, w *os.File, r *os.File, ch chan string) {
+	for {
+		w.Close()
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
 
-// 	}
-// }
+		if buf.String() != "" {
+			ch <- buf.String()
+		}
+	}
+}
+
+func receiveReceiver(ctx context.Context, ch <-chan string, m *Sample) {
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Fprintln(os.Stderr, *m)
+			return
+		case v := <-ch:
+			fmt.Fprintln(os.Stderr, "kita")
+			m.Text += v
+		}
+	}
+}
+
+func Catch2(ctx context.Context, m *Sample) {
+	localCtx, cancel := context.WithCancel(ctx)
+	ch := make(chan string)
+	defer cancel()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	stdout := os.Stdout
+	os.Stdout = w
+
+	go receiveReceiver(localCtx, ch, m)
+	sendReceiver(localCtx, w, r, ch)
+	fmt.Fprint(os.Stderr, "fin")
+	os.Stdout = stdout
+}
 
 func Catch(ctx context.Context, ms *Sample) {
 	// ch := make(chan string)
@@ -51,34 +88,52 @@ func Catch(ctx context.Context, ms *Sample) {
 	if err != nil {
 		panic(err)
 	}
+	stdout := os.Stdout
 	os.Stdout = w
 
+	// for {
+
+	// 	fmt.Println("before")
+
+	// 	w.Close()
+
+	// 	var buf bytes.Buffer
+	// 	io.Copy(&buf, r)
+
+	// 	select {
+	// 	case <-localCtx.Done():
+	// 		os.Stdout = stdout // restore stdout
+	// 		fmt.Fprintln(os.Stderr, *ms)
+	// 		return
+	// 		// case v := <-ch:
+	// 		// 	os.Stdout = stdout
+	// 		// 	ms.Text += v
+	// 		// 	fmt.Fprintln(os.Stderr, v)
+	// 		// 	continue
+	// 	default:
+	// 		switch buf.String() {
+	// 		case "":
+	// 			// fmt.Fprintln(os.Stderr, "err")
+	// 		default:
+	// 			fmt.Fprintln(os.Stderr, "kita")
+	// 			ms.Text += buf.String()
+	// 		}
+	// 	}
+	// }
+
 	for {
-
-		fmt.Println("before")
-
-		w.Close()
-
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-
 		select {
 		case <-localCtx.Done():
+			w.Close()
+
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+
+			ms.Text += buf.String()
+
+			os.Stdout = stdout // restore stdout
 			fmt.Fprintln(os.Stderr, *ms)
 			return
-			// case v := <-ch:
-			// 	os.Stdout = stdout
-			// 	ms.Text += v
-			// 	fmt.Fprintln(os.Stderr, v)
-			// 	continue
-		default:
-			switch buf.String() {
-			case "":
-				// fmt.Fprintln(os.Stderr, "err")
-			default:
-				fmt.Fprintln(os.Stderr, "kita")
-				ms.Text += buf.String()
-			}
 		}
 	}
 }
