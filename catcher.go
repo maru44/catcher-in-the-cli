@@ -24,6 +24,65 @@ import (
 // 	catch(ctx, ch)
 // }
 
+// func Catch2(ctx context.Context, ms *Sample) {
+// 	ch := make(chan string)
+// 	localCtx, cancel := context.WithCancel(ctx)
+// 	defer cancel()
+
+// 	r, w, err := os.Pipe()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	os.Stdout = w
+// }
+
+// func sendReceiver(w *os.File, ch chan string) {
+// 	for {
+
+// 	}
+// }
+
+func Catch(ctx context.Context, ms *Sample) {
+	// ch := make(chan string)
+	localCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout = w
+
+	for {
+
+		fmt.Println("before")
+
+		w.Close()
+
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+
+		select {
+		case <-localCtx.Done():
+			fmt.Fprintln(os.Stderr, *ms)
+			return
+			// case v := <-ch:
+			// 	os.Stdout = stdout
+			// 	ms.Text += v
+			// 	fmt.Fprintln(os.Stderr, v)
+			// 	continue
+		default:
+			switch buf.String() {
+			case "":
+				// fmt.Fprintln(os.Stderr, "err")
+			default:
+				fmt.Fprintln(os.Stderr, "kita")
+				ms.Text += buf.String()
+			}
+		}
+	}
+}
+
 func (c *Catcher) Catch(ctx context.Context, ch chan string, ms []string) {
 	// ctx, cancel := context.WithCancel(ctx)
 	// ms := []MessageWithType{}

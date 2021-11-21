@@ -25,3 +25,7 @@ const (
 type Catcher struct {
 	ThreadTime int
 }
+
+type Sample struct {
+	Text string
+}
