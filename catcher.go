@@ -2,69 +2,202 @@ package catcher
 
 import (
 	"bufio"
+	"bytes"
 	"context"
-	"fmt"
+	"io"
 	"os"
+	"strings"
 	"time"
 )
 
-func InitCatcher(ctx context.Context) {
-	ch := make(chan string)
+func (c *catcher) CatchWithCtx(ctx context.Context, f func(ms []*Caught)) {
+	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
+	defer cancel()
 
-	go func() {
-		for {
-			select {
-			case v := <-ch:
-				fmt.Println("d")
-				fmt.Println(v)
-			}
-		}
-	}()
-	// catch(ctx, ch)
-}
+	chOut := make(chan bool)
+	chIn := make(chan bool)
+	chError := make(chan bool)
 
-func (c *Catcher) Catch(ctx context.Context, ch chan string) {
-	localCtx, cancel := context.WithCancel(ctx)
-
-	ms := []MessageWithType{}
-
-	time.Sleep(time.Duration(c.threadTime) * time.Second)
-	scan(localCtx, os.Stdin, ms)
-	scan(localCtx, os.Stderr, ms)
-	scan(localCtx, os.Stdout, ms)
-	cancel()
-
-	for _, m := range ms {
-		fmt.Println(m.String())
+	if c.OutBulk != nil {
+		go c.catchStdout(localCtx, chOut)
 	}
-}
-
-//
-func scan(ctx context.Context, file *os.File, ms []MessageWithType) {
-	scanner := bufio.NewScanner(file)
-
-	var t StdType
-	switch file {
-	case os.Stdin:
-		t = StdTypeIn
-	case os.Stderr:
-		t = StdTypeError
-	default:
-		t = StdTypeOut
+	if c.InBulk != nil {
+		go c.catchStdin(localCtx, chIn)
+	}
+	if c.ErrorBulk != nil {
+		go c.catchStderr(localCtx, chError)
 	}
 
 	for {
 		select {
+		case <-localCtx.Done():
+			for {
+				if c.IsOver(chOut, chIn, chError) {
+					cs := c.Separate()
+					f(cs)
+					c.Reset()
+					return
+				}
+			}
 		case <-ctx.Done():
+			for {
+				if c.IsOver(chOut, chIn, chError) {
+					cs := c.Separate()
+					f(cs)
+					c.Reset()
+					return
+				}
+			}
+		}
+	}
+}
+
+func (c *catcher) catchStdout(ctx context.Context, ch chan bool) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	stdout := os.Stdout
+	os.Stdout = w
+
+	for {
+		select {
+		case <-ctx.Done():
+			w.Close()
+
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+
+			c.OutBulk.Text = buf.String()
+
+			os.Stdout = stdout // restore stdout
+			ch <- true
 			return
-		default:
-			for scanner.Scan() {
-				ms = append(ms, MessageWithType{
-					Type:    t,
-					Message: scanner.Text(),
-					Time:    time.Now(),
+		}
+	}
+}
+
+func (c *catcher) catchStderr(ctx context.Context, ch chan bool) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	stderr := os.Stderr
+	os.Stderr = w
+
+	for {
+		select {
+		case <-ctx.Done():
+			w.Close()
+
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+
+			c.ErrorBulk.Text = buf.String()
+
+			os.Stderr = stderr
+			ch <- true
+			return
+		}
+	}
+}
+
+func (c *catcher) catchStdin(ctx context.Context, ch chan bool) {
+	c.InBulk.Text = ""
+	s := bufio.NewScanner(os.Stdin)
+
+	go func() {
+		// for s.Scan() && !<-ch {
+		// 	c.InBulk.Text += s.Text()
+		// }
+
+		for {
+			select {
+			case <-ctx.Done():
+				ch <- true
+				return
+			}
+		}
+	}()
+
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		ch <- true
+	// 		return
+	// 	}
+	// }
+
+	for s.Scan() && !<-ch {
+		c.InBulk.Text += s.Text()
+	}
+}
+
+func (c *catcher) Separate() []*Caught {
+	ret := []*Caught{}
+	if c.OutBulk != nil {
+		strs := strings.Split(c.OutBulk.Text, c.Separator)
+		for _, s := range strs {
+			if s != "" {
+				ret = append(ret, &Caught{
+					Text: s,
+					Type: StdTypeOut,
 				})
 			}
 		}
 	}
+	if c.InBulk != nil {
+		strs := strings.Split(c.InBulk.Text, c.Separator)
+		for _, s := range strs {
+			if s != "" {
+				ret = append(ret, &Caught{
+					Text: s,
+					Type: StdTypeIn,
+				})
+			}
+		}
+	}
+	if c.ErrorBulk != nil {
+		strs := strings.Split(c.ErrorBulk.Text, c.Separator)
+		for _, s := range strs {
+			if s != "" {
+				ret = append(ret, &Caught{
+					Text: s,
+					Type: StdTypeError,
+				})
+			}
+		}
+	}
+	return ret
+}
+
+func (c *catcher) Reset() {
+	if c.OutBulk != nil {
+		c.OutBulk.Text = ""
+	}
+	if c.InBulk != nil {
+		c.InBulk.Text = ""
+	}
+	if c.ErrorBulk != nil {
+		c.ErrorBulk.Text = ""
+	}
+}
+
+func (c *catcher) IsOver(chOut, chIn, chError chan bool) bool {
+	if c.OutBulk != nil {
+		if !<-chOut {
+			return false
+		}
+	}
+	if c.InBulk != nil {
+		if !<-chIn {
+			return false
+		}
+	}
+	if c.ErrorBulk != nil {
+		if !<-chError {
+			return false
+		}
+	}
+	return true
 }

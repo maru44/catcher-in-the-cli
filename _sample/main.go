@@ -1,52 +1,37 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/maru44/catcher-in-the-cli"
 )
 
 func main() {
-	// ctx := context.Background()
-	// ch := make(chan string)
-	// // go catcher.InitCatcher(ctx)
+	ctx := context.Background()
 
-	// c := catcher.SetupCatcher(5)
+	c := catcher.GenerateCatcher(
+		&catcher.Settings{
+			Interval:   2000,
+			TargetType: []catcher.StdType{catcher.StdTypeOut, catcher.StdTypeError},
+		},
+	)
 
-	// go c.Catch(ctx, ch)
+	go c.CatchWithCtx(ctx, println)
 
-	// time.Sleep(1 * time.Second)
-	// fmt.Println("aaa")
+	time.Sleep(300 * time.Microsecond)
+	fmt.Println("bbb")
+	fmt.Println("ccc")
 
-	// time.Sleep(1 * time.Second)
-	// fmt.Println("bbb")
-
-	// time.Sleep(5 * time.Second)
-
-	/* pattern 2 */
-
-	t := []string{}
-	ch := make(chan string)
-
-	go func() {
-		sc := bufio.NewScanner(os.Stdout)
-		for sc.Scan() {
-			// fmt.Println("d")
-			// t = append(t, sc.Text())
-			ch <- sc.Text()
-		}
-	}()
-
-	go func() {
-		select {
-		case v := <-ch:
-			t = append(t, v)
-		}
-	}()
-
-	fmt.Println("a")
+	fmt.Fprintln(os.Stderr, "ddddd")
 
 	time.Sleep(3 * time.Second)
-	fmt.Println(t)
+}
+
+func println(ts []*catcher.Caught) {
+	for _, t := range ts {
+		fmt.Println(t)
+	}
 }
