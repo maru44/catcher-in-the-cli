@@ -171,6 +171,7 @@ func (c *catcher) Separate() []*Caught {
 	return ret
 }
 
+// reset RawCaught
 func (c *catcher) Reset() {
 	if c.OutBulk != nil {
 		c.OutBulk.Text = ""
@@ -183,6 +184,7 @@ func (c *catcher) Reset() {
 	}
 }
 
+// is over all child
 func (c *catcher) IsOver(chOut, chIn, chError chan bool) bool {
 	if c.OutBulk != nil {
 		if !<-chOut {
