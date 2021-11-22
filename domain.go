@@ -93,6 +93,16 @@ func GenerateCatcher(s *Settings) catcher {
 		}
 	}
 
+	// default interval
+	if s.Interval == 0 {
+		s.Interval = 60000
+	}
+
+	// default separator
+	if s.Separator == "" {
+		s.Separator = "\n"
+	}
+
 	c.Settings = *s
 	return *c
 }

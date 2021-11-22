@@ -1,7 +1,6 @@
 package catcher
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -103,33 +102,27 @@ func (c *catcher) catchStderr(ctx context.Context, ch chan bool) {
 }
 
 func (c *catcher) catchStdin(ctx context.Context, ch chan bool) {
-	c.InBulk.Text = ""
-	s := bufio.NewScanner(os.Stdin)
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	stdin := os.Stdin
+	os.Stdin = r
 
-	go func() {
-		// for s.Scan() && !<-ch {
-		// 	c.InBulk.Text += s.Text()
-		// }
+	for {
+		select {
+		case <-ctx.Done():
+			w.Close()
 
-		for {
-			select {
-			case <-ctx.Done():
-				ch <- true
-				return
-			}
+			var buf bytes.Buffer
+			io.Copy(&buf, w)
+
+			c.InBulk.Text = buf.String()
+
+			os.Stdin = stdin
+			ch <- true
+			return
 		}
-	}()
-
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		ch <- true
-	// 		return
-	// 	}
-	// }
-
-	for s.Scan() && !<-ch {
-		c.InBulk.Text += s.Text()
 	}
 }
 
@@ -147,7 +140,7 @@ func (c *catcher) Separate() []*Caught {
 		}
 	}
 	if c.InBulk != nil {
-		strs := strings.Split(c.InBulk.Text, c.Separator)
+		strs := strings.Split(c.InBulk.Text, "\n")
 		for _, s := range strs {
 			if s != "" {
 				ret = append(ret, &Caught{

@@ -14,8 +14,8 @@ func main() {
 
 	c := catcher.GenerateCatcher(
 		&catcher.Settings{
-			Interval:   2000,
-			TargetType: []catcher.StdType{catcher.StdTypeOut, catcher.StdTypeError},
+			Interval: 2000,
+			// TargetType: []catcher.StdType{catcher.StdTypeOut, catcher.StdTypeError},
 		},
 	)
 
