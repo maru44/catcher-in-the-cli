@@ -1,6 +1,7 @@
 package catcher
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -102,27 +103,18 @@ func (c *catcher) catchStderr(ctx context.Context, ch chan bool) {
 }
 
 func (c *catcher) catchStdin(ctx context.Context, ch chan bool) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-	stdin := os.Stdin
-	os.Stdin = r
+	scan := bufio.NewScanner(os.Stdin)
 
-	for {
+	go func() {
 		select {
 		case <-ctx.Done():
-			w.Close()
-
-			var buf bytes.Buffer
-			io.Copy(&buf, w)
-
-			c.InBulk.Text = buf.String()
-
-			os.Stdin = stdin
 			ch <- true
 			return
 		}
+	}()
+
+	for scan.Scan() {
+		c.InBulk.Text += scan.Text()
 	}
 }
 
