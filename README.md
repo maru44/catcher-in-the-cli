@@ -1,8 +1,9 @@
 # The Catcher in the Cli
 
 > *I'm standing on the edge of some crazy cliff. What I have to do, I have to catch everybody if they start to go over the cliff—I mean if they’re running and they don’t look where they’re going I have to come out from somewhere and catch them. That’s all I’d do all day. I’d just be the catcher in the cli and all.*
+
 <br />
-ref: The Catcher in the Rye
+ref: *The Catcher in the Rye*
 
 ## Explain
 
@@ -73,7 +74,7 @@ func writeFile(ts []*catcher.Caught) {
 ### result
 
 I ran `go run _sample/main.go` from `<my_directory>/catcher-in-the-cli`.
-And also I ran these commands such as  `aaa` and `ls` under main func is running.
+<br />And also I ran following commands `aaa` and `ls` under main func is running.
 
 **output**
 ```
