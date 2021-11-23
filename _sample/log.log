@@ -1,0 +1,15 @@
+Output: bbb
+Output: ccc
+Input: aaa
+Error: ddddd
+Error: exec: "aaa": executable file not found in $PATH
+Output: LICENSE
+Output: README.md
+Output: _sample
+Output: _sample2
+Output: catcher.go
+Output: caught.go
+Output: domain.go
+Output: go.mod
+Output: tools.go
+Input: ls

@@ -1,36 +1,38 @@
 package main
 
-import (
-	"context"
-	"fmt"
-	"os"
-	"time"
+// @TODO without context
 
-	"github.com/maru44/catcher-in-the-cli"
-)
+// import (
+// 	"context"
+// 	"fmt"
+// 	"os"
+// 	"time"
 
-func main() {
-	ctx := context.Background()
+// 	"github.com/maru44/catcher-in-the-cli"
+// )
 
-	c := catcher.GenerateCatcher(
-		&catcher.Settings{
-			Interval: 2000,
-		},
-	)
+// func main() {
+// 	ctx := context.Background()
 
-	go c.CatchWithCtx(ctx, println)
+// 	c := catcher.GenerateCatcher(
+// 		&catcher.Settings{
+// 			Interval: 2000,
+// 		},
+// 	)
 
-	time.Sleep(300 * time.Microsecond)
-	fmt.Println("bbb")
-	fmt.Println("ccc")
+// 	go c.CatchWithCtx(ctx, println)
 
-	fmt.Fprintln(os.Stderr, "ddddd")
+// 	time.Sleep(300 * time.Microsecond)
+// 	fmt.Println("bbb")
+// 	fmt.Println("ccc")
 
-	time.Sleep(3 * time.Second)
-}
+// 	fmt.Fprintln(os.Stderr, "ddddd")
 
-func println(ts []*catcher.Caught) {
-	for _, t := range ts {
-		fmt.Println(t)
-	}
-}
+// 	time.Sleep(3 * time.Second)
+// }
+
+// func println(ts []*catcher.Caught) {
+// 	for _, t := range ts {
+// 		fmt.Println(t)
+// 	}
+// }
