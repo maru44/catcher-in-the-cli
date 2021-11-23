@@ -12,7 +12,50 @@ import (
 	"time"
 )
 
-func (c *catcher) CatchWithCtx(ctx context.Context, f func(ms []*Caught)) {
+func (c *catcher) Catch(f func(cs []*Caught)) {
+	ctx := context.Background()
+	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
+	defer cancel()
+
+	chOut := make(chan bool)
+	chIn := make(chan bool)
+	chError := make(chan bool)
+
+	if c.OutBulk != nil {
+		go c.catchStdout(localCtx, chOut)
+	}
+	if c.InBulk != nil {
+		go c.catchStdin(localCtx, chIn)
+	}
+	if c.ErrorBulk != nil {
+		go c.catchStderr(localCtx, chError)
+	}
+
+	for {
+		select {
+		case <-localCtx.Done():
+			for {
+				if c.IsOver(chOut, chIn, chError) {
+					cs := c.Separate()
+					f(cs)
+					c.Reset()
+					return
+				}
+			}
+		case <-ctx.Done():
+			for {
+				if c.IsOver(chOut, chIn, chError) {
+					cs := c.Separate()
+					f(cs)
+					c.Reset()
+					return
+				}
+			}
+		}
+	}
+}
+
+func (c *catcher) CatchWithCtx(ctx context.Context, f func(cs []*Caught)) {
 	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
 	defer cancel()
 
@@ -68,7 +111,8 @@ func (c *catcher) catchStdout(ctx context.Context, ch chan bool) {
 			w.Close()
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			mw := io.MultiWriter(stdout, &buf)
+			io.Copy(mw, r)
 
 			c.OutBulk.Text = buf.String()
 
@@ -93,7 +137,8 @@ func (c *catcher) catchStderr(ctx context.Context, ch chan bool) {
 			w.Close()
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			mw := io.MultiWriter(stderr, &buf)
+			io.Copy(mw, r)
 
 			c.ErrorBulk.Text = buf.String()
 
