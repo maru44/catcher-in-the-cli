@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func (c *catcher) Catch(f func(cs []*Caught), ch chan string) {
+func (c *catcher) Catch(ch chan string, f func(cs []*Caught)) {
 	c.Times++
 	ctx := context.Background()
 	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))

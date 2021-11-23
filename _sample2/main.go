@@ -2,37 +2,44 @@ package main
 
 // @TODO without context
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"os"
-// 	"time"
+import (
+	"fmt"
+	"os"
+	"time"
 
-// 	"github.com/maru44/catcher-in-the-cli"
-// )
+	"github.com/maru44/catcher-in-the-cli"
+)
 
-// func main() {
-// 	ctx := context.Background()
+func main() {
+	ch := make(chan string)
+	c := catcher.GenerateCatcher(
+		&catcher.Settings{
+			Interval: 4000,
+		},
+	)
 
-// 	c := catcher.GenerateCatcher(
-// 		&catcher.Settings{
-// 			Interval: 2000,
-// 		},
-// 	)
+	go c.Catch(ch, println)
 
-// 	go c.CatchWithCtx(ctx, println)
+	time.Sleep(500 * time.Microsecond)
+	fmt.Println("bbb")
+	fmt.Println("ccc")
 
-// 	time.Sleep(300 * time.Microsecond)
-// 	fmt.Println("bbb")
-// 	fmt.Println("ccc")
+	fmt.Fprintln(os.Stderr, "ddddd")
 
-// 	fmt.Fprintln(os.Stderr, "ddddd")
+	for {
+		select {
+		case v := <-ch:
+			if v == catcher.SignalRepeat {
+				go c.Catch(ch, println)
+			} else {
+				return
+			}
+		}
+	}
+}
 
-// 	time.Sleep(3 * time.Second)
-// }
-
-// func println(ts []*catcher.Caught) {
-// 	for _, t := range ts {
-// 		fmt.Println(t)
-// 	}
-// }
+func println(ts []*catcher.Caught) {
+	for _, t := range ts {
+		fmt.Println(t)
+	}
+}

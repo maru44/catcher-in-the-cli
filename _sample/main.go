@@ -11,6 +11,7 @@ import (
 
 func main() {
 	ctx := context.Background()
+	ch := make(chan string)
 
 	c := catcher.GenerateCatcher(
 		&catcher.Settings{
@@ -18,8 +19,6 @@ func main() {
 			Repeat:   catcher.IntPtr(2),
 		},
 	)
-
-	ch := make(chan string)
 
 	go c.CatchWithCtx(ctx, ch, writeFile)
 
