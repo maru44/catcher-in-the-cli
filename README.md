@@ -2,7 +2,6 @@
 
 > *I'm standing on the edge of some crazy cliff. What I have to do, I have to catch everybody if they start to go over the cliff—I mean if they’re running and they don’t look where they’re going I have to come out from somewhere and catch them. That’s all I’d do all day. I’d just be the catcher in the cli and all.*
 
-<br />
 ref: *The Catcher in the Rye*
 
 ## Explain
