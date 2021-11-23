@@ -14,11 +14,14 @@ func main() {
 
 	c := catcher.GenerateCatcher(
 		&catcher.Settings{
-			Interval: 2000,
+			Interval: 4000,
+			Repeat:   catcher.IntPtr(1),
 		},
 	)
 
-	go c.CatchWithCtx(ctx, println)
+	ch := make(chan string)
+
+	go c.CatchWithCtx(ctx, ch, println)
 
 	time.Sleep(300 * time.Microsecond)
 	fmt.Println("bbb")
@@ -26,7 +29,16 @@ func main() {
 
 	fmt.Fprintln(os.Stderr, "ddddd")
 
-	time.Sleep(3 * time.Second)
+	for {
+		select {
+		case v := <-ch:
+			if v == catcher.SignalRepeat {
+				go c.CatchWithCtx(ctx, ch, println)
+			} else {
+				return
+			}
+		}
+	}
 }
 
 func println(ts []*catcher.Caught) {

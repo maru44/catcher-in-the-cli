@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-func (c *catcher) Catch(f func(cs []*Caught)) {
+func (c *catcher) Catch(f func(cs []*Caught), ch chan string) {
+	c.Times++
 	ctx := context.Background()
 	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
 	defer cancel()
@@ -39,6 +40,7 @@ func (c *catcher) Catch(f func(cs []*Caught)) {
 					cs := c.Separate()
 					f(cs)
 					c.Reset()
+					c.repeat(ch, c.Times)
 					return
 				}
 			}
@@ -48,6 +50,7 @@ func (c *catcher) Catch(f func(cs []*Caught)) {
 					cs := c.Separate()
 					f(cs)
 					c.Reset()
+					c.repeat(ch, c.Times)
 					return
 				}
 			}
@@ -55,7 +58,8 @@ func (c *catcher) Catch(f func(cs []*Caught)) {
 	}
 }
 
-func (c *catcher) CatchWithCtx(ctx context.Context, f func(cs []*Caught)) {
+func (c *catcher) CatchWithCtx(ctx context.Context, ch chan string, f func(cs []*Caught)) {
+	c.Times++
 	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
 	defer cancel()
 
@@ -81,6 +85,7 @@ func (c *catcher) CatchWithCtx(ctx context.Context, f func(cs []*Caught)) {
 					cs := c.Separate()
 					f(cs)
 					c.Reset()
+					c.repeat(ch, c.Times)
 					return
 				}
 			}
@@ -90,6 +95,7 @@ func (c *catcher) CatchWithCtx(ctx context.Context, f func(cs []*Caught)) {
 					cs := c.Separate()
 					f(cs)
 					c.Reset()
+					c.repeat(ch, c.Times)
 					return
 				}
 			}
@@ -241,4 +247,16 @@ func (c *catcher) IsOver(chOut, chIn, chError chan bool) bool {
 		}
 	}
 	return true
+}
+
+func (c *catcher) repeat(ch chan string, times int) {
+	if c.Repeat != nil {
+		if times > *c.Repeat {
+			ch <- SignalFin
+		} else {
+			ch <- SignalRepeat
+		}
+	} else {
+		ch <- SignalRepeat
+	}
 }

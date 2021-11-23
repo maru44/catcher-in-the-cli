@@ -22,6 +22,7 @@ type (
 		OutBulk   *RawCaught
 		InBulk    *RawCaught
 		ErrorBulk *RawCaught
+		Times     int
 	}
 
 	Settings struct {
@@ -29,6 +30,7 @@ type (
 		Interval   int64
 		Separator  string
 		TargetType []StdType
+		Repeat     *int
 	}
 
 	Sample struct {
@@ -36,9 +38,8 @@ type (
 	}
 
 	CatcherInTheCli interface {
-		// Setting(s *Settings) error
-		Catch(f func(m *[]CaughtInTheCli))
-		CatchWithCtx(ctx context.Context, f func(m *[]CaughtInTheCli))
+		Catch(ch chan string, f func(m *[]CaughtInTheCli))
+		CatchWithCtx(ctx context.Context, ch chan string, f func(m *[]CaughtInTheCli))
 		Separate() []*CaughtInTheCli
 		Reset()
 		IsOver(chOut, chIn, chError chan bool) bool
@@ -51,9 +52,12 @@ type (
 )
 
 const (
-	StdTypeError = "Error"
-	StdTypeOut   = "Output"
-	StdTypeIn    = "Input"
+	StdTypeError = StdType("Error")
+	StdTypeOut   = StdType("Output")
+	StdTypeIn    = StdType("Input")
+
+	SignalRepeat = "Repeat"
+	SignalFin    = "Fin"
 )
 
 // generator of catcher
@@ -66,6 +70,7 @@ func GenerateCatcher(s *Settings) catcher {
 				TargetType: []StdType{
 					StdTypeOut, StdTypeIn, StdTypeError,
 				},
+				Repeat: nil,
 			},
 			OutBulk:   &RawCaught{Type: StdTypeOut},
 			InBulk:    &RawCaught{Type: StdTypeIn},
@@ -104,5 +109,6 @@ func GenerateCatcher(s *Settings) catcher {
 	}
 
 	c.Settings = *s
+	c.Times = 1
 	return *c
 }
