@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -95,7 +97,7 @@ func (c *catcher) catchStderr(ctx context.Context, ch chan bool) {
 
 			c.ErrorBulk.Text = buf.String()
 
-			os.Stderr = stderr
+			os.Stderr = stderr // restore stderr
 			ch <- true
 			return
 		}
@@ -114,7 +116,14 @@ func (c *catcher) catchStdin(ctx context.Context, ch chan bool) {
 	}()
 
 	for scan.Scan() {
-		c.InBulk.Text += scan.Text()
+		c.InBulk.Text += scan.Text() + c.Separator
+		com := strings.Split(scan.Text(), " ")
+		out, err := exec.Command(com[0], com[1:]...).Output()
+		if err != nil {
+			fmt.Fprint(os.Stderr, err, c.Separator)
+		} else {
+			fmt.Print(string(out), c.Separator)
+		}
 	}
 }
 
@@ -132,7 +141,7 @@ func (c *catcher) Separate() []*Caught {
 		}
 	}
 	if c.InBulk != nil {
-		strs := strings.Split(c.InBulk.Text, "\n")
+		strs := strings.Split(c.InBulk.Text, c.Separator)
 		for _, s := range strs {
 			if s != "" {
 				ret = append(ret, &Caught{
