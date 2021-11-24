@@ -11,31 +11,23 @@ import (
 )
 
 func main() {
-	ch := make(chan string)
 	c := catcher.GenerateCatcher(
 		&catcher.Settings{
 			Interval: 4000,
 		},
 	)
 
-	go c.Catch(ch, println)
-
-	time.Sleep(500 * time.Microsecond)
-	fmt.Println("bbb")
-	fmt.Println("ccc")
-
-	fmt.Fprintln(os.Stderr, "ddddd")
-
-	for {
+	go func() {
 		select {
-		case v := <-ch:
-			if v == catcher.SignalRepeat {
-				go c.Catch(ch, println)
-			} else {
-				return
-			}
+		case <-time.After(500 * time.Millisecond):
+			fmt.Println("bbb")
+			fmt.Println("ccc")
+
+			fmt.Fprintln(os.Stderr, "ddddd")
 		}
-	}
+	}()
+
+	c.Catch(println)
 }
 
 func println(ts []*catcher.Caught) {

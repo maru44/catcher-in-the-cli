@@ -11,7 +11,6 @@ import (
 
 func main() {
 	ctx := context.Background()
-	ch := make(chan string)
 
 	c := catcher.GenerateCatcher(
 		&catcher.Settings{
@@ -20,25 +19,17 @@ func main() {
 		},
 	)
 
-	go c.CatchWithCtx(ctx, ch, writeFile)
-
-	// you need time blank
-	time.Sleep(500 * time.Microsecond)
-
-	fmt.Println("bbb")
-	fmt.Println("ccc")
-	fmt.Fprintln(os.Stderr, "ddddd")
-
-	for {
+	go func() {
 		select {
-		case v := <-ch:
-			if v == catcher.SignalRepeat {
-				go c.CatchWithCtx(ctx, ch, writeFile)
-			} else {
-				return
-			}
+		case <-time.After(500 * time.Millisecond):
+			fmt.Println("bbb")
+			fmt.Println("ccc")
+
+			fmt.Fprintln(os.Stderr, "ddddd")
 		}
-	}
+	}()
+
+	c.CatchWithCtx(ctx, writeFile)
 }
 
 func println(ts []*catcher.Caught) {

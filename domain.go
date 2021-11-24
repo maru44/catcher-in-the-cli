@@ -38,8 +38,8 @@ type (
 	}
 
 	CatcherInTheCli interface {
-		Catch(ch chan string, f func(m *[]CaughtInTheCli))
-		CatchWithCtx(ctx context.Context, ch chan string, f func(m *[]CaughtInTheCli))
+		Catch(f func(m *[]CaughtInTheCli))
+		CatchWithCtx(ctx context.Context, f func(m *[]CaughtInTheCli))
 		Separate() []*CaughtInTheCli
 		Reset()
 		IsOver(chOut, chIn, chError chan bool) bool

@@ -12,53 +12,46 @@ import (
 	"time"
 )
 
-func (c *catcher) Catch(ch chan string, f func(cs []*Caught)) {
-	c.Times++
+// catch without parent context
+func (c *catcher) Catch(f func(cs []*Caught)) {
 	ctx := context.Background()
-	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	chOut := make(chan bool)
-	chIn := make(chan bool)
-	chError := make(chan bool)
+	ch := make(chan string)
 
-	if c.OutBulk != nil {
-		go c.catchStdout(localCtx, chOut)
-	}
-	if c.InBulk != nil {
-		go c.catchStdin(localCtx, chIn)
-	}
-	if c.ErrorBulk != nil {
-		go c.catchStderr(localCtx, chError)
-	}
+	go c.catch(ctx, ch, f)
 
 	for {
 		select {
-		case <-localCtx.Done():
-			for {
-				if c.IsOver(chOut, chIn, chError) {
-					cs := c.Separate()
-					f(cs)
-					c.Reset()
-					c.repeat(ch, c.Times)
-					return
-				}
-			}
-		case <-ctx.Done():
-			for {
-				if c.IsOver(chOut, chIn, chError) {
-					cs := c.Separate()
-					f(cs)
-					c.Reset()
-					c.repeat(ch, c.Times)
-					return
-				}
+		case v := <-ch:
+			if v == SignalRepeat {
+				go c.catch(ctx, ch, f)
+			} else {
+				return
 			}
 		}
 	}
 }
 
-func (c *catcher) CatchWithCtx(ctx context.Context, ch chan string, f func(cs []*Caught)) {
+// catch with context
+func (c *catcher) CatchWithCtx(ctx context.Context, f func(cs []*Caught)) {
+	ch := make(chan string)
+	go c.catch(ctx, ch, f)
+
+	for {
+		select {
+		case v := <-ch:
+			if v == SignalRepeat {
+				go c.catch(ctx, ch, f)
+			} else {
+				return
+			}
+		}
+	}
+}
+
+func (c *catcher) catch(ctx context.Context, ch chan string, f func(cs []*Caught)) {
 	c.Times++
 	localCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(c.Interval))
 	defer cancel()
@@ -102,6 +95,8 @@ func (c *catcher) CatchWithCtx(ctx context.Context, ch chan string, f func(cs []
 		}
 	}
 }
+
+/* stdout, stdin, stderr */
 
 func (c *catcher) catchStdout(ctx context.Context, ch chan bool) {
 	r, w, err := os.Pipe()
